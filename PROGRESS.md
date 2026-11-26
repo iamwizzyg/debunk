@@ -17,15 +17,21 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - SARIF is step 20 behind --sarif; does not block release (ship in 0.2 if broken)
 - Tested only in GitHub Codespaces. iSH (32-bit x86, musl) is read-only.
 - Layout: src/debunk/ package, tests/ folder, setuptools build backend
+- Generic format: one JSON object {"schema_version": 1, "findings": [...]};
+  required id/class/target; unknown fields rejected; request optional;
+  one bad finding is reported, the rest still load
+- Classes: xss_reflected, sqli_boolean, open_redirect, idor, auth_bypass,
+  file_exposure
 
 ## Done
 - Step 1: questions answered
 - Step 2: name chosen
 - Step 3: repo created, LICENSE, .gitignore, SECURITY.md, PROGRESS.md
 - Step 4: pyproject.toml, ruff config, `debunk --version` entry point
+- Step 5: schema.py (dataclasses + strict validator) and tests
 
 ## Next
-- Step 5: JSON schema, dataclasses, validator
+- Step 6: HTTP engine (timeouts, retries, limits, redaction)
 
 ## Known broken
 - Nothing yet
