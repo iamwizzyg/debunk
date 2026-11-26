@@ -44,6 +44,12 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - runner.py runs each check 3 times. All runs must agree; any disagreement,
   or an error mixed with a verdict, is INCONCLUSIVE. Out-of-scope, no-control
   and checker bugs stop at once with ERROR (no repeats).
+- XSS checker (checkers/xss.py): sends GET only (HEAD has no body). CONFIRMED
+  needs raw payload reflection plus NEW executable markup vs the control
+  (a <script>, an on...= handler, or a javascript: URL) in an HTML response.
+  Text-only contexts (comment, attribute value, textarea, title...) are
+  UNCONFIRMED. Inside an existing <script>, firewall 403/406, 429/5xx,
+  truncated body, or a CSP without 'unsafe-inline' are INCONCLUSIVE.
 
 ## Done
 - Step 1: questions answered
@@ -54,9 +60,10 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 6: redact.py, engine.py (timeouts, retries, per-host limits) and tests
 - Step 7: baseline.py (control/replay builder) and differ.py, with tests
 - Step 8: csrf.py, checkers/base.py (verdicts, registry, Context), runner.py
+- Step 9: checkers/xss.py (reflected XSS) and tests
 
 ## Next
-- Step 9: reflected XSS checker + test
+- Step 10: boolean SQLi checker + test
 
 ## Known broken
 - Nothing yet
@@ -72,3 +79,7 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Catch-all detection (server says 200 to everything) arrives with the
   checkers that need it; Cloudflare challenge pages in the classifier
 - Diff is order-insensitive: reordered but identical content counts as same
+- XSS checker never runs JavaScript: CONFIRMED means executable markup was
+  injected, not that a browser definitely ran it. DOM XSS, mutation XSS,
+  stored XSS and payloads that break out of JS strings are out of scope
+  (the last are INCONCLUSIVE).
