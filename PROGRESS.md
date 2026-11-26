@@ -33,6 +33,17 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - differ.py compares token bags (order-insensitive). It masks the probe value
   (raw, HTML-escaped, URL-encoded), CSRF/nonce input and meta values, and long
   hex ids or UUIDs before comparing.
+- Checkers live in src/debunk/checkers/. One subclass of Checker per class,
+  registered with @register; each checker module is imported in
+  checkers/__init__.py so it registers itself.
+- Context.send() refreshes CSRF/nonce values (query params and X-CSRF-style
+  headers) by fetching the finding's target first, with the same headers.
+  Only csrf/xsrf/nonce/authenticity/verification names; never auth tokens.
+- Result helpers (confirmed/unconfirmed/inconclusive/error) redact secrets
+  and cut every line to 300 characters.
+- runner.py runs each check 3 times. All runs must agree; any disagreement,
+  or an error mixed with a verdict, is INCONCLUSIVE. Out-of-scope, no-control
+  and checker bugs stop at once with ERROR (no repeats).
 
 ## Done
 - Step 1: questions answered
@@ -42,10 +53,10 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 5: schema.py (dataclasses + strict validator) and tests
 - Step 6: redact.py, engine.py (timeouts, retries, per-host limits) and tests
 - Step 7: baseline.py (control/replay builder) and differ.py, with tests
+- Step 8: csrf.py, checkers/base.py (verdicts, registry, Context), runner.py
 
 ## Next
-- Step 8: checker interface + registry (also the runner: refetch CSRF token
-  before replay, repeat 3 times, disagreement becomes INCONCLUSIVE)
+- Step 9: reflected XSS checker + test
 
 ## Known broken
 - Nothing yet
@@ -55,8 +66,9 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - System proxy settings are ignored on purpose
 - Retry-After header is not honoured yet (fixed backoff only)
 - Brotli responses are not decoded (we only ask for gzip/deflate)
-- CSRF values are masked in diffs, but refetching a fresh token before
-  replay is not built yet (step 8)
+- CSRF refresh costs one extra GET per request; Set-Cookie rotation during a
+  refresh is not followed (the engine keeps no cookie jar)
 - Class-specific controls (other id, no auth) arrive with those checkers
-- Cloudflare challenge pages are handled later (classifier)
+- Catch-all detection (server says 200 to everything) arrives with the
+  checkers that need it; Cloudflare challenge pages in the classifier
 - Diff is order-insensitive: reordered but identical content counts as same
