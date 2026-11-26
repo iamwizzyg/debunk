@@ -22,6 +22,11 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   one bad finding is reported, the rest still load
 - Classes: xss_reflected, sqli_boolean, open_redirect, idor, auth_bypass,
   file_exposure
+- HTTP engine is engine.py (not http.py, to avoid shadowing the stdlib).
+  Backoff is fixed, no jitter, so runs are repeatable.
+- Redirects followed manually (default on); checkers pass follow=False when
+  they need to see the 3xx. Sensitive headers dropped on cross-host redirects.
+- Scope guard is a callable passed to Engine; wired to --scope in step 21.
 
 ## Done
 - Step 1: questions answered
@@ -29,9 +34,18 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 3: repo created, LICENSE, .gitignore, SECURITY.md, PROGRESS.md
 - Step 4: pyproject.toml, ruff config, `debunk --version` entry point
 - Step 5: schema.py (dataclasses + strict validator) and tests
+- Step 6: redact.py, engine.py (timeouts, retries, per-host limits) and tests
 
 ## Next
-- Step 6: HTTP engine (timeouts, retries, limits, redaction)
+- Step 7: baseline builder and differ
 
 ## Known broken
 - Nothing yet
+
+## Known limits
+- Timeout is per socket operation, not a total deadline per request
+- System proxy settings are ignored on purpose
+- Retry-After header is not honoured yet (fixed backoff only)
+- Brotli responses are not decoded (we only ask for gzip/deflate)
+- Cloudflare challenge pages and CSRF refetch are handled later (classifier,
+  baseline steps)
