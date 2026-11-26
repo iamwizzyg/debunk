@@ -27,6 +27,12 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Redirects followed manually (default on); checkers pass follow=False when
   they need to see the 3xx. Sensitive headers dropped on cross-host redirects.
 - Scope guard is a callable passed to Engine; wired to --scope in step 21.
+- baseline.py only builds requests (ProbeRequest); it never sends them.
+  Control value is the fixed string dbnkctl7391 (deterministic).
+- Missing request data: replay is built from target + parameter + payload.
+- differ.py compares token bags (order-insensitive). It masks the probe value
+  (raw, HTML-escaped, URL-encoded), CSRF/nonce input and meta values, and long
+  hex ids or UUIDs before comparing.
 
 ## Done
 - Step 1: questions answered
@@ -35,9 +41,11 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 4: pyproject.toml, ruff config, `debunk --version` entry point
 - Step 5: schema.py (dataclasses + strict validator) and tests
 - Step 6: redact.py, engine.py (timeouts, retries, per-host limits) and tests
+- Step 7: baseline.py (control/replay builder) and differ.py, with tests
 
 ## Next
-- Step 7: baseline builder and differ
+- Step 8: checker interface + registry (also the runner: refetch CSRF token
+  before replay, repeat 3 times, disagreement becomes INCONCLUSIVE)
 
 ## Known broken
 - Nothing yet
@@ -47,5 +55,8 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - System proxy settings are ignored on purpose
 - Retry-After header is not honoured yet (fixed backoff only)
 - Brotli responses are not decoded (we only ask for gzip/deflate)
-- Cloudflare challenge pages and CSRF refetch are handled later (classifier,
-  baseline steps)
+- CSRF values are masked in diffs, but refetching a fresh token before
+  replay is not built yet (step 8)
+- Class-specific controls (other id, no auth) arrive with those checkers
+- Cloudflare challenge pages are handled later (classifier)
+- Diff is order-insensitive: reordered but identical content counts as same
