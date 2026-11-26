@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets and local config
+.env
+.env.*
+*.pem
+*.key
+cookies.txt
+scope.local.txt
+
+# Scan data (can contain target details and credentials)
+strix_runs/
+findings.local.json
+reports/
+
+# Editor and OS
+.DS_Store
+.vscode/
+.idea/
