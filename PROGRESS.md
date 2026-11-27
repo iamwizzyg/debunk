@@ -35,7 +35,8 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   hex ids or UUIDs before comparing.
 - Checkers live in src/debunk/checkers/. One subclass of Checker per class,
   registered with @register; each checker module is imported in
-  checkers/__init__.py so it registers itself.
+  checkers/__init__.py so it registers itself. Imports there are kept
+  alphabetically sorted so ruff's import-order check (I001) never blocks.
 - Context.send() refreshes CSRF/nonce values (query params and X-CSRF-style
   headers) by fetching the finding's target first, with the same headers.
   Only csrf/xsrf/nonce/authenticity/verification names; never auth tokens.
@@ -65,6 +66,15 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   redirect there. Payload with no explicit host, or naming the target's own
   host, is ERROR before any request is sent. Backslash-as-slash and
   protocol-relative (//host) tricks are recognised when reading the payload.
+- IDOR checker (checkers/idor.py): compares the payload id against a
+  made-up id in the same parameter (no "my own id" field exists in the
+  generic schema). Made-up id not denied => INCONCLUSIVE (catch-all
+  suspect). Made-up id denied, payload id also denied => UNCONFIRMED.
+  Made-up id denied, payload id differs and is not denied => CONFIRMED.
+  Denial = status in {401,403,404} or text like "access denied"/"forbidden"/
+  "please log in". CONFIRMED here means access was granted to something
+  that looked restricted -- it does not prove the data belongs to a
+  different user (see Known limits).
 
 ## Done
 - Step 1: questions answered
@@ -78,9 +88,10 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 9: checkers/xss.py (reflected XSS) and tests
 - Step 10: checkers/sqli.py (boolean SQLi) and tests
 - Step 11: checkers/redirect.py (open redirect) and tests
+- Step 12: checkers/idor.py and tests
 
 ## Next
-- Step 12: IDOR checker + test
+- Step 13: auth bypass checker + test
 
 ## Known broken
 - Nothing yet
@@ -92,9 +103,9 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Brotli responses are not decoded (we only ask for gzip/deflate)
 - CSRF refresh costs one extra GET per request; Set-Cookie rotation during a
   refresh is not followed (the engine keeps no cookie jar)
-- Class-specific controls (other id, no auth) arrive with those checkers
-- Catch-all detection (server says 200 to everything) arrives with the
-  checkers that need it; Cloudflare challenge pages in the classifier
+- Catch-all detection (server says 200 to everything) is implemented per
+  checker where needed (now in xss, redirect, idor); Cloudflare challenge
+  pages are handled later (classifier)
 - Diff is order-insensitive: reordered but identical content counts as same
 - XSS checker never runs JavaScript: CONFIRMED means executable markup was
   injected, not that a browser definitely ran it. DOM XSS, mutation XSS,
@@ -107,3 +118,8 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   and does not detect "scheme:host" bypasses with no slashes (e.g.
   https:evil.com) or JavaScript-driven redirects; these return ERROR or
   UNCONFIRMED rather than a false positive.
+- IDOR checker cannot verify the returned content actually belongs to a
+  different user, only that access to a seemingly restricted resource was
+  granted. A WAF 403 on the payload id reads the same as a genuine
+  authorization denial (UNCONFIRMED either way); the two are not
+  distinguished.
