@@ -122,9 +122,16 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   output format, registered with @register, same pattern as checkers and
   adapters. Reporter.render(report, quiet) -> str. Table reporter
   (reporters/table.py) is the default: one row per finding (verdict symbol
-  + word, class, host/path, reason), wrapped to 80 columns, 16-colour ANSI
-  honouring NO_COLOR and non-TTY output, -q prints only the summary line
-  (always shown, with per-verdict counts).
+  + word, class, host/path, reason), wrapped to 80 columns including the
+  summary line, 16-colour ANSI honouring NO_COLOR and non-TTY output, -q
+  prints only the summary line (always shown, with per-verdict counts).
+- JSON reporter (reporters/json_report.py): {"findings": [...], "summary":
+  {...}}. Each finding is {id, class, target, verdict, reason, evidence,
+  runs}; class/target are null for a finding that failed to load. Summary
+  has per-verdict counts, total, and exit_code. quiet=True omits
+  "findings". Verdicts serialize as plain strings. Output ends with one
+  trailing newline; this reporter does not re-redact (that already
+  happened in checkers/base.py).
 
 ## Done
 - Step 1: questions answered
@@ -146,9 +153,10 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 17: classifier.py (Report, exit_code, Cloudflare detection) and tests
 - Step 18: reporters/base.py, reporters/table.py (default output,
   summary line wraps too) and tests
+- Step 19: reporters/json_report.py and tests
 
 ## Next
-- Step 19: JSON reporter
+- Step 20: SARIF reporter + validation
 
 ## Known broken
 - Nothing yet
