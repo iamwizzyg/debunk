@@ -132,6 +132,18 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   "findings". Verdicts serialize as plain strings. Output ends with one
   trailing newline; this reporter does not re-redact (that already
   happened in checkers/base.py).
+- SARIF reporter (reporters/sarif.py): one run, one result per finding.
+  ruleId is the vuln class or debunk/load-error (for a finding that
+  failed to load). level: CONFIRMED->error, INCONCLUSIVE->warning,
+  UNCONFIRMED->note, ERROR->none. locations.physicalLocation.uri is the
+  target URL (SARIF allows any URI, not only repo-relative file paths;
+  GitHub may not render a source line for a live URL). Evidence goes in
+  properties.evidence, keeping message.text a short one-liner. Schema
+  validation test (test_validates_against_the_official_sarif_schema)
+  fetches the real SARIF 2.1.0 schema over HTTP and skips cleanly
+  offline; it only proves conformance when run with network access
+  (true in GitHub Actions and in a Codespace, not yet independently
+  confirmed by me before handing this step over).
 
 ## Done
 - Step 1: questions answered
@@ -154,9 +166,12 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 18: reporters/base.py, reporters/table.py (default output,
   summary line wraps too) and tests
 - Step 19: reporters/json_report.py and tests
+- Step 20: reporters/sarif.py (SARIF 2.1.0) and tests (dev dep:
+  jsonschema, schema-validation test only)
 
 ## Next
-- Step 20: SARIF reporter + validation
+- Step 21: CLI wiring, scope, exit codes (connects adapters,
+  classifier and reporters into one working `debunk` command)
 
 ## Known broken
 - Nothing yet

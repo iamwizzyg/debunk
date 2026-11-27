@@ -14,7 +14,7 @@ authors = [{ name = "iamwizzyg" }]
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest", "ruff"]
+dev = ["jsonschema", "pytest", "ruff"]
 
 [project.scripts]
 debunk = "debunk.cli:main"
