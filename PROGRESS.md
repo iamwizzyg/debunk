@@ -50,6 +50,21 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   Text-only contexts (comment, attribute value, textarea, title...) are
   UNCONFIRMED. Inside an existing <script>, firewall 403/406, 429/5xx,
   truncated body, or a CSP without 'unsafe-inline' are INCONCLUSIVE.
+- Boolean SQLi checker (checkers/sqli.py): builds a "false" twin of the
+  payload by flipping one recognised boolean pattern (quoted equality,
+  numeric equality, or the TRUE keyword; only the first match is flipped).
+  Sends true/false/control. CONFIRMED needs true != false AND false ~
+  baseline. true == false is UNCONFIRMED. true != false but false !~
+  baseline is INCONCLUSIVE (may be error-based SQLi or unrelated input
+  handling). Known DB error text is extra evidence only, never decisive.
+  A payload with no recognised pattern returns ERROR, not a guess.
+- Open redirect checker (checkers/redirect.py): sends replay and control
+  with follow=False. A redirect is a 3xx Location header or a meta refresh
+  tag (attribute order independent). CONFIRMED needs the replay to redirect
+  off-site to exactly the host the payload names, and the control not to
+  redirect there. Payload with no explicit host, or naming the target's own
+  host, is ERROR before any request is sent. Backslash-as-slash and
+  protocol-relative (//host) tricks are recognised when reading the payload.
 
 ## Done
 - Step 1: questions answered
@@ -61,9 +76,11 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 7: baseline.py (control/replay builder) and differ.py, with tests
 - Step 8: csrf.py, checkers/base.py (verdicts, registry, Context), runner.py
 - Step 9: checkers/xss.py (reflected XSS) and tests
+- Step 10: checkers/sqli.py (boolean SQLi) and tests
+- Step 11: checkers/redirect.py (open redirect) and tests
 
 ## Next
-- Step 10: boolean SQLi checker + test
+- Step 12: IDOR checker + test
 
 ## Known broken
 - Nothing yet
@@ -83,3 +100,10 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   injected, not that a browser definitely ran it. DOM XSS, mutation XSS,
   stored XSS and payloads that break out of JS strings are out of scope
   (the last are INCONCLUSIVE).
+- SQLi checker only recognises three boolean patterns and flips the first
+  match; time-based, UNION-based and numeric-range payloads are not
+  supported and return ERROR, not a false CONFIRMED or UNCONFIRMED.
+- Open redirect checker compares hostname only (port and scheme ignored),
+  and does not detect "scheme:host" bypasses with no slashes (e.g.
+  https:evil.com) or JavaScript-driven redirects; these return ERROR or
+  UNCONFIRMED rather than a false positive.
