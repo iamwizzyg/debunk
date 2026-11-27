@@ -75,6 +75,22 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   "please log in". CONFIRMED here means access was granted to something
   that looked restricted -- it does not prove the data belongs to a
   different user (see Known limits).
+- Auth bypass checker (checkers/auth.py): strips credentials (Authorization,
+  Cookie, API-key headers, token/session/key-style query params) from the
+  finding's own request, keeping its technique (extra header, path trick,
+  method), and compares it against a bare request with no headers at all,
+  both sent with follow=False. A redirect whose Location mentions
+  login/signin/auth/sso also counts as denial. CONFIRMED needs the bare
+  request denied and the stripped technique to get through. No request
+  data on the finding is an ERROR; this checker has no parameter+payload
+  fallback.
+- File exposure checker (checkers/file_exposure.py): fetches the claimed
+  file plus a nonexistent sibling path (catch-all probe). CONFIRMED needs a
+  successful response matching a known sensitive-file signature (private
+  key, .git internals, SQL dump, htpasswd, PHP DB config, AWS credentials,
+  or an .env-style secret variable) while the catch-all probe does not
+  match the same way. No payload/parameter needed; the target is the file
+  itself. Non-2xx replay is UNCONFIRMED, not an error.
 
 ## Done
 - Step 1: questions answered
@@ -89,9 +105,11 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 10: checkers/sqli.py (boolean SQLi) and tests
 - Step 11: checkers/redirect.py (open redirect) and tests
 - Step 12: checkers/idor.py and tests
+- Step 13: checkers/auth.py (auth bypass) and tests
+- Step 14: checkers/file_exposure.py and tests -- all six v1 checkers done
 
 ## Next
-- Step 13: auth bypass checker + test
+- Step 15: generic adapter
 
 ## Known broken
 - Nothing yet
@@ -104,8 +122,8 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - CSRF refresh costs one extra GET per request; Set-Cookie rotation during a
   refresh is not followed (the engine keeps no cookie jar)
 - Catch-all detection (server says 200 to everything) is implemented per
-  checker where needed (now in xss, redirect, idor); Cloudflare challenge
-  pages are handled later (classifier)
+  checker where needed (xss, redirect, idor, auth, file_exposure);
+  Cloudflare challenge pages are handled later (classifier)
 - Diff is order-insensitive: reordered but identical content counts as same
 - XSS checker never runs JavaScript: CONFIRMED means executable markup was
   injected, not that a browser definitely ran it. DOM XSS, mutation XSS,
@@ -123,3 +141,16 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   granted. A WAF 403 on the payload id reads the same as a genuine
   authorization denial (UNCONFIRMED either way); the two are not
   distinguished.
+- Auth bypass checker requires request data on the finding (no fallback);
+  denial detection relies mostly on status for HEAD requests, since HEAD
+  has no body to scan for denial text.
+- File exposure checker relies on a fixed signature list; a sensitive file
+  type not in the list (e.g. an unusual proprietary config format) returns
+  UNCONFIRMED rather than CONFIRMED. Binary files (keystores, pickled data)
+  are not checked for secrets, only text content.
+
+## Next up, by design
+All six v1 vulnerability classes now have a checker. Steps 15-17 give
+debunk ways to load real findings (Strix adapter) and report the results
+(table, JSON, SARIF); step 21 wires scope enforcement and --insecure into
+the CLI and connects everything built so far into one working `debunk` run.
