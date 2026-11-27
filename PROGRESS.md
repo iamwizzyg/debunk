@@ -91,6 +91,12 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   or an .env-style secret variable) while the catch-all probe does not
   match the same way. No payload/parameter needed; the target is the file
   itself. Non-2xx replay is UNCONFIRMED, not an error.
+- Adapters live in src/debunk/adapters/. One subclass of Adapter per input
+  format, registered with @register, same pattern as checkers (registry,
+  alphabetical imports in adapters/__init__.py). Adapter.load(path) returns
+  a schema.LoadResult. Adapters never send network requests; they only
+  read from disk. Generic adapter (adapters/generic.py) is a thin wrapper
+  around schema.load_file -- all parsing already happened in step 5.
 
 ## Done
 - Step 1: questions answered
@@ -107,9 +113,10 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 12: checkers/idor.py and tests
 - Step 13: checkers/auth.py (auth bypass) and tests
 - Step 14: checkers/file_exposure.py and tests -- all six v1 checkers done
+- Step 15: adapters/base.py (Adapter, registry), adapters/generic.py, tests
 
 ## Next
-- Step 15: generic adapter
+- Step 16: Strix adapter (strix_runs/<run> directory)
 
 ## Known broken
 - Nothing yet
@@ -148,9 +155,6 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   type not in the list (e.g. an unusual proprietary config format) returns
   UNCONFIRMED rather than CONFIRMED. Binary files (keystores, pickled data)
   are not checked for secrets, only text content.
-
-## Next up, by design
-All six v1 vulnerability classes now have a checker. Steps 15-17 give
-debunk ways to load real findings (Strix adapter) and report the results
-(table, JSON, SARIF); step 21 wires scope enforcement and --insecure into
-the CLI and connects everything built so far into one working `debunk` run.
+- Adapters are read-only loaders only; nothing yet selects --format or
+  connects an adapter's output to the runner/reporters (arrives in step 21,
+  CLI wiring).
