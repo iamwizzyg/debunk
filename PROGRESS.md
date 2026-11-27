@@ -97,6 +97,34 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   a schema.LoadResult. Adapters never send network requests; they only
   read from disk. Generic adapter (adapters/generic.py) is a thin wrapper
   around schema.load_file -- all parsing already happened in step 5.
+- Strix adapter (adapters/strix.py): PROVISIONAL format, not yet confirmed
+  against a real Strix v1.7.1 export (Strix's real shape is unconfirmed).
+  Expects strix_runs/<run>/manifest.json with strix_version starting
+  "1.7." and strix_runs/<run>/findings.json with {"findings": [...]}.
+  CLASS_MAP translates Strix's vulnerability_type strings into debunk's
+  classes; an unrecognised type is a per-entry error, not a crash. Any
+  mismatch with real Strix output (wrong filenames, field names, or
+  vocabulary) will raise a clear AdapterError naming what was expected --
+  update CLASS_MAP/field names there once a real sample is available.
+- Classifier (classifier.py): classify_run(findings, engine, load_errors,
+  repeats, reg, detect_cloudflare) ties step-8's runner and step 5/16's
+  FindingError together into one Report. FindingReport covers both a
+  checked result and an unparsed (failed to load) finding, the latter
+  always ERROR. Report.exit_code: 2 if any CONFIRMED, else 1 if any
+  UNCONFIRMED, else 0 (exit code 3, a runtime crash, stays a CLI concern
+  for step 21). Cloudflare challenge pages (cf-mitigated header, or
+  403/503 with "Just a moment"/challenge-platform markers) are caught by
+  wrapping the Engine each checker uses: a caught challenge raises
+  CloudflareChallengeError (an HttpError), so it flows through the
+  existing step-8 repeat logic unchanged -- a persistent challenge ends
+  up ERROR with a clear reason, not a new verdict.
+- Reporters live in src/debunk/reporters/. One subclass of Reporter per
+  output format, registered with @register, same pattern as checkers and
+  adapters. Reporter.render(report, quiet) -> str. Table reporter
+  (reporters/table.py) is the default: one row per finding (verdict symbol
+  + word, class, host/path, reason), wrapped to 80 columns, 16-colour ANSI
+  honouring NO_COLOR and non-TTY output, -q prints only the summary line
+  (always shown, with per-verdict counts).
 
 ## Done
 - Step 1: questions answered
@@ -114,9 +142,13 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 13: checkers/auth.py (auth bypass) and tests
 - Step 14: checkers/file_exposure.py and tests -- all six v1 checkers done
 - Step 15: adapters/base.py (Adapter, registry), adapters/generic.py, tests
+- Step 16: adapters/strix.py (provisional format) and tests
+- Step 17: classifier.py (Report, exit_code, Cloudflare detection) and tests
+- Step 18: reporters/base.py, reporters/table.py (default output,
+  summary line wraps too) and tests
 
 ## Next
-- Step 16: Strix adapter (strix_runs/<run> directory)
+- Step 19: JSON reporter
 
 ## Known broken
 - Nothing yet
@@ -129,8 +161,7 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - CSRF refresh costs one extra GET per request; Set-Cookie rotation during a
   refresh is not followed (the engine keeps no cookie jar)
 - Catch-all detection (server says 200 to everything) is implemented per
-  checker where needed (xss, redirect, idor, auth, file_exposure);
-  Cloudflare challenge pages are handled later (classifier)
+  checker where needed (xss, redirect, idor, auth, file_exposure)
 - Diff is order-insensitive: reordered but identical content counts as same
 - XSS checker never runs JavaScript: CONFIRMED means executable markup was
   injected, not that a browser definitely ran it. DOM XSS, mutation XSS,
@@ -155,6 +186,18 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   type not in the list (e.g. an unusual proprietary config format) returns
   UNCONFIRMED rather than CONFIRMED. Binary files (keystores, pickled data)
   are not checked for secrets, only text content.
+- Strix adapter format (filenames, field names, vulnerability_type
+  vocabulary) is a provisional best guess, UNCONFIRMED against a real
+  Strix v1.7.1 export. A real sample's directory listing (file names, and
+  one example finding with field names, with any secrets redacted) is the
+  fastest way to correct this adapter if it rejects real Strix output.
+- Cloudflare detection is a heuristic over English-language challenge
+  text and one header; other anti-bot vendors (Akamai, Incapsula...) or a
+  future Cloudflare page redesign are not recognised and would surface as
+  an ordinary, less informative HttpError instead.
+- Table reporter wraps on whitespace only; a reason with one very long
+  unbreakable token (e.g. a long URL with no spaces) can still exceed 80
+  columns on that line.
 - Adapters are read-only loaders only; nothing yet selects --format or
-  connects an adapter's output to the runner/reporters (arrives in step 21,
-  CLI wiring).
+  connects an adapter's output to the classifier/reporters (arrives in
+  step 21, CLI wiring).
