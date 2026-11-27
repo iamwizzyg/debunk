@@ -144,6 +144,48 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
   offline; it only proves conformance when run with network access
   (true in GitHub Actions and in a Codespace, not yet independently
   confirmed by me before handing this step over).
+- CLI (cli.py): positional path is optional (nargs="?"); bare `debunk`
+  prints help and exits 0. --format/--scope/--insecure/--concurrency/
+  --delay/--timeout/--retries/--repeats wire straight into the adapter,
+  scope guard, and HttpConfig built in earlier steps. --json/--sarif are
+  mutually exclusive (argparse group); default output is the table.
+  Exit-code policy: Report.exit_code (0/1/2) is unchanged from step 17;
+  the CLI itself downgrades an unconfirmed-only run (code 1) to 0 unless
+  --fail-on unconfirmed is passed, keeping that policy out of the
+  classifier. SchemaError/AdapterError/ScopeError and any other
+  exception are caught at the top level and reported as exit 3, never a
+  raw traceback. scope.py: --scope FILE is one glob-per-line (# comments,
+  blank lines ignored), matched against the request hostname via
+  fnmatch; an out-of-scope request raises BlockedError in the engine
+  (step 6), which the runner (step 8) already turns into ERROR.
+- --show-secrets is accepted but not implemented: redaction happens
+  unconditionally inside checkers/base.py (step 8) before a Result is
+  ever built, so there is currently no unredacted path to reveal.
+  Passing the flag prints one stderr notice and the run proceeds
+  normally, redacted as always. Making this flag real would mean
+  threading it through every checker; left for a later step.
+- Fixture app (tests/fixtures/app.py): stdlib http.server, one route per
+  vulnerability class -- /xss (reflects), /sqli (toy boolean-gated
+  in-memory rows), /redirect (open redirect), /account?id=42 (IDOR:
+  only id 42 exists), /admin (auth bypass: needs X-Debug: 1), /.env
+  (static sensitive content). Runs standalone via `python -m
+  tests.fixtures.app [port]` for manual poking. make_server(port=0)
+  picks a free port; tests/test_fixture_app.py proves the fixture
+  itself behaves correctly, independent of debunk.
+- CI (.github/workflows/ci.yml): one job, Python 3.12, runs on every
+  push and pull_request. Steps: checkout, setup-python, `pip install -e
+  ".[dev]"`, `ruff check .`, `pytest -q`. The spec's "self-test against
+  a local fixture server on every push" is satisfied by pytest itself,
+  since tests/fixtures/app.py starts a real local server inside the
+  test suite (test_fixture_app.py, and any future end-to-end test) --
+  there is no separate CI step that starts the app and curls it by
+  hand, since that would duplicate what the test suite already proves.
+  ruff's known-first-party = ["debunk"] was added so it reliably tells
+  `from debunk.x import y` apart from third-party imports, which is why
+  nearly every I001 import-order fix earlier in this build needed a
+  manual --fix. Because CI runs with normal internet access, the SARIF
+  schema-validation test (step 20) that skips locally without network
+  will actually run and assert in CI, not just pass vacuously.
 
 ## Done
 - Step 1: questions answered
@@ -168,10 +210,16 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Step 19: reporters/json_report.py and tests
 - Step 20: reporters/sarif.py (SARIF 2.1.0) and tests (dev dep:
   jsonschema, schema-validation test only)
+- Step 21: cli.py rewritten (real adapter/engine/classifier/reporter
+  wiring), scope.py, tests for both
+- Step 22: tests/fixtures/app.py (one route per vulnerability class)
+  and its own smoke tests
+- Step 23: .github/workflows/ci.yml (ruff + pytest on push/PR;
+  pytest already runs the fixture-app self-test since it's part of
+  the suite); known-first-party added to ruff's isort config
 
 ## Next
-- Step 21: CLI wiring, scope, exit codes (connects adapters,
-  classifier and reporters into one working `debunk` command)
+- Step 24: README, CHANGELOG, CONTRIBUTING
 
 ## Known broken
 - Nothing yet
@@ -221,6 +269,13 @@ Repo: https://github.com/iamwizzyg/debunk (public, MIT)
 - Table reporter wraps on whitespace only; a reason with one very long
   unbreakable token (e.g. a long URL with no spaces) can still exceed 80
   columns on that line.
-- Adapters are read-only loaders only; nothing yet selects --format or
-  connects an adapter's output to the classifier/reporters (arrives in
-  step 21, CLI wiring).
+- --show-secrets has no effect yet (see Decisions); output is always
+  redacted, with a one-line stderr notice when the flag is passed.
+- argparse's own usage errors (bad flags, bad --format choice) exit with
+  code 2, which is argparse's own convention and is unrelated to the
+  report-based 0/1/2/3 exit-code scheme; a script checking $? should be
+  aware the two 2's mean different things.
+- The CLI always prints to stdout; there is no --output file flag yet
+  (redirect the shell's stdout if you want a file).
+- No progress indicator while a run is in flight; output only appears
+  once the whole run finishes, which can feel slow on a large input.
