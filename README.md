@@ -17,14 +17,10 @@ or, inside a virtual environment:
 
 ## Example
 
-TODO: replace this block with a real captured run of `debunk /tmp/f.json`
-before tagging v0.1.0.
+    $ debunk /tmp/f.json
+    [-] UNCONFIRMED xss_reflected  example.com/search   payload is not reflected in the response
 
-    $ debunk findings.json
-    [+] CONFIRMED   xss_reflected  example.com/search   payload is reflected unencoded and creates executable markup
-    [-] UNCONFIRMED sqli_boolean   example.com/items     the true and false conditions produced the same response
-
-    2 finding(s) -- [+] CONFIRMED: 1, [-] UNCONFIRMED: 1, [?] INCONCLUSIVE: 0, [!] ERROR: 0
+    1 finding(s) -- [+] CONFIRMED: 0, [-] UNCONFIRMED: 1, [?] INCONCLUSIVE: 0, [!] ERROR: 0
 
 ## Usage
 
